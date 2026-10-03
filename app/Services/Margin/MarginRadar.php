@@ -104,6 +104,7 @@ final class MarginRadar
                 'do_nothing' => $baseline->outcome(),
             ],
             'supplier_watch' => array_map(fn (SupplierFlag $flag): array => $flag->toArray(), $flags),
+            'risk_explanation' => $this->riskExplanation($profile, $inflation, $baseline),
             'alert_metrics' => [
                 'stress_probability' => $baseline->stressProbability,
                 'margin_at_risk' => $marginAtRisk->value,
@@ -192,6 +193,24 @@ final class MarginRadar
                 'pass_through' => $line->estimate?->toArray(),
                 'price_forecast' => $forecast,
                 'extra_cost_next_quarter' => $extraCost,
+                'unit_price' => [
+                    'today' => LabelledValue::euros2($line->latestUnitPrice, StatementLabel::Data),
+                    'history' => array_map(
+                        fn (string $period, float $price): array => ['period' => $period, 'price' => round($price, 2)],
+                        array_keys(array_slice($line->unitPrices, -6, preserve_keys: true)),
+                        array_slice($line->unitPrices, -6),
+                    ),
+                    'forecast' => $months === [] ? null : [
+                        'period' => MonthlySeries::shift($profile->asOf, count($months)),
+                        'price' => LabelledValue::euros2(
+                            $line->latestUnitPrice * end($months)['p50'],
+                            StatementLabel::Forecast,
+                            $line->latestUnitPrice * end($months)['p10'],
+                            $line->latestUnitPrice * end($months)['p90'],
+                            $forecast?->confidence,
+                        ),
+                    ],
+                ],
             ];
         }
 
@@ -254,7 +273,9 @@ final class MarginRadar
             $sentence = 'Over the last '.$count(12).' months your costs rose '.$percent($inflation->costInflation).' while official inflation was '.$percent($inflation->headlineCpi);
             $sentence .= $inflation->sellingPriceGrowth !== null ? ' and your own prices rose '.$percent($inflation->sellingPriceGrowth).'.' : '.';
             $sentences[] = $sentence;
-            $sentences[] = 'That gap costs you about '.$money($inflation->profitLostThisMonth).' this month.';
+            $sentences[] = $inflation->profitLostThisMonth > 0
+                ? 'That gap costs you about '.$money($inflation->profitLostThisMonth).' this month.'
+                : 'Your own price rises covered that this month, with about '.$money(-$inflation->profitLostThisMonth).' to spare.';
         }
 
         $final = $baseline->finalMonth();
@@ -274,6 +295,73 @@ final class MarginRadar
         }
 
         return ['text' => $text, 'label' => StatementLabel::AiSuggestion->value, 'grounded' => true];
+    }
+
+    /**
+     * "Why is my business at risk?": the drivers of the cash-stress probability, biggest first,
+     * each built only from engine numbers and grounding-checked.
+     *
+     * @return array<string, mixed>
+     */
+    private function riskExplanation(CompanyProfile $profile, CompanyInflation $inflation, SimulationResult $baseline): array
+    {
+        $costs = $profile->currentMonthlyCosts();
+        $profit = $profile->currentMonthlyProfit();
+        $margin = $profile->currentMonthlyRevenue > 0 ? $profit / $profile->currentMonthlyRevenue : 0.0;
+        $cashMonths = $costs > 0 ? $profile->company->cash_balance / $costs : 0.0;
+        $leverage = $profit > 0 ? $costs / $profit : 0.0;
+        $fastSpend = 0.0;
+
+        foreach ($profile->lines as $line) {
+            $change = $inflation->lineInflation[$line->costLine->id] ?? null;
+
+            if ($change !== null && $inflation->headlineCpi !== null && $change > $inflation->headlineCpi) {
+                $fastSpend += $line->currentMonthlySpend;
+            }
+        }
+
+        $fastShare = $costs > 0 ? $fastSpend / $costs : 0.0;
+        $pct = fn (float $fraction): float => round($fraction * 100, 1);
+        $facts = [$pct($margin), round($margin * 100), round($cashMonths, 1), $pct($fastShare), round($leverage, 1), $pct($baseline->stressProbability)];
+        if ($inflation->headlineCpi !== null) {
+            $facts[] = $pct($inflation->headlineCpi);
+        }
+
+        $reasons = [
+            ['weight' => 1 - min(1, $margin / 0.25), 'title' => 'Thin profit', 'body' => 'You keep about '.round($margin * 100).' cents of every euro you sell, so every 1% rise in costs takes about '.round($leverage, 1).'% off your profit.'],
+            ['weight' => $fastShare, 'title' => 'Costs rising faster than official inflation', 'body' => $pct($fastShare).'% of what you spend is on items whose price rose faster than official inflation ('.($inflation->headlineCpi === null ? 'n/a' : $pct($inflation->headlineCpi).'%').') over the last year.'],
+            ['weight' => 1 - min(1, $cashMonths), 'title' => 'Small cash cushion', 'body' => 'Your bank balance covers about '.round($cashMonths, 1).' months of costs, so a bad month hurts quickly.'],
+        ];
+        usort($reasons, fn (array $a, array $b): int => $b['weight'] <=> $a['weight']);
+
+        $closing = 'In '.$pct($baseline->stressProbability).'% of the simulated futures your cash falls below the minimum you want to keep within '
+            .count($baseline->monthlyProfit).' months if nothing changes.';
+        // The months in the closing sentence, and the "1%" unit in the leverage sentence.
+        $facts[] = count($baseline->monthlyProfit);
+        $facts[] = 1;
+
+        foreach ([...array_column($reasons, 'body'), $closing] as $text) {
+            $ungrounded = $this->groundingCheck->ungroundedNumbers($text, $facts);
+
+            if ($ungrounded !== []) {
+                throw new RuntimeException('Risk explanation contains ungrounded numbers: '.implode(', ', $ungrounded));
+            }
+        }
+
+        return [
+            'stress_probability' => LabelledValue::percent($baseline->stressProbability, StatementLabel::Forecast),
+            'margin' => LabelledValue::percent($margin, StatementLabel::Data),
+            'cash_months' => new LabelledValue(round($cashMonths, 1), 'months', StatementLabel::Data),
+            'fast_rising_share' => LabelledValue::percent($fastShare, StatementLabel::Data),
+            'profit_change_per_cost_point' => new LabelledValue(-round($leverage, 1), 'percent', StatementLabel::Data),
+            'reasons' => array_map(fn (array $reason): array => ['title' => $reason['title'], 'body' => $reason['body']], $reasons),
+            'closing' => ['text' => $closing, 'label' => StatementLabel::AiSuggestion->value, 'grounded' => true],
+            'notes' => [
+                'assumptions' => 'Costs follow official ASK series with the pass-through learned from your invoices; sales volume reacts to your own price changes with elasticity '.$profile->company->price_elasticity.'.',
+                'data_used' => count($profile->revenue).' months of sales, '.count($profile->lines).' cost lines from your invoices, and Kosovo Agency of Statistics price series up to '.($inflation->headlineCpiPeriod ?? $profile->asOf).'.',
+                'reliability' => 'The probability comes from '.number_format($baseline->paths).' simulated futures with a fixed seed, so it is reproducible; the range shrinks as more invoices arrive.',
+            ],
+        ];
     }
 
     private function percentOrNull(?float $fraction, StatementLabel $label): ?LabelledValue

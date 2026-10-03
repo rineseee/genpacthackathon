@@ -7,15 +7,16 @@ use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\SimulationRun;
 use App\Services\Margin\Alerts\AlertDispatcher;
+use Database\Seeders\DemoCafeSeeder;
+use Database\Seeders\PriceDriverSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Tests\SeedsDemoCafe;
 use Tests\TestCase;
 
 class MarginAlertsTest extends TestCase
 {
-    use RefreshDatabase, SeedsDemoCafe;
+    use RefreshDatabase;
 
     private const string WEBHOOK_URL = 'http://n8n.test/webhook/margin-alert';
 
@@ -29,21 +30,31 @@ class MarginAlertsTest extends TestCase
         ]);
     }
 
-    public function test_command_sends_the_demo_cafe_stress_alert_from_the_radar(): void
+    public function test_command_sends_the_demo_cafe_margin_alert_from_the_radar(): void
     {
         Http::fake([self::WEBHOOK_URL => Http::response(['sent' => true])]);
-        $company = $this->seedDemoCafe();
-        $company->alertRules()->update(['threshold' => 0.0]);
+        config(['margin.simulation.paths' => 400]);
+        $this->seed([PriceDriverSeeder::class, DemoCafeSeeder::class]);
+        $company = Company::query()->where('name', 'Cafe Demo')->firstOrFail();
+        $company->alertRules()->delete();
+        $rule = AlertRule::factory()->for($company)->create([
+            'metric' => AlertMetric::MarginAtRisk,
+            'threshold' => 1,
+            'recipient_email' => 'owner@cafe-demo.test',
+        ]);
 
         $this->artisan('margin:check-alerts')
-            ->expectsOutputToContain('Sent stress_probability alert for Cafe Demo to owner@cafe-demo.test')
+            ->expectsOutputToContain('Sent margin_at_risk alert for Cafe Demo to owner@cafe-demo.test')
             ->expectsOutputToContain('1 alert(s) sent.')
             ->assertSuccessful();
 
-        Http::assertSent(fn (Request $request): bool => $request->url() === self::WEBHOOK_URL
-            && $request['metric'] === 'stress_probability'
-            && $request['company']['name'] === 'Cafe Demo');
-        $this->assertNotNull($company->alertRules()->first()->last_triggered_at);
+        Http::assertSent(fn (Request $request): bool => $request->hasHeader('X-Margin-Token', 'secret-token')
+            && $request['metric'] === 'margin_at_risk'
+            && $request['unit'] === 'EUR'
+            && $request['observed'] > 1
+            && $request['company']['name'] === 'Cafe Demo'
+            && $request['simulation']['scenario'] === 'baseline');
+        $this->assertNotNull($rule->fresh()->last_triggered_at);
     }
 
     public function test_crossed_alert_is_sent_to_n8n_and_marked_triggered(): void

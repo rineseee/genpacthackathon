@@ -16,8 +16,10 @@ use Illuminate\Database\Seeder;
 /**
  * Demo company: a fictional three-location cafe with 18 months of invoices and sales.
  *
- * Coffee uses the broad Kosovo food CPI as a proxy; milk follows the EU raw-milk benchmark.
- * The milk supplier's markup over that benchmark is deliberately visible to supplier watch.
+ * The company and its invoices are fictional; the price drivers are real Kosovo Agency of Statistics
+ * series. Invoice prices follow those series with a known pass-through and lag, plus noise, so the
+ * engine has a real link to learn. The milk supplier quietly adds a markup over the last months,
+ * which the supplier watch should catch. Requires PriceDriverSeeder.
  */
 class DemoCafeSeeder extends Seeder
 {
@@ -33,14 +35,14 @@ class DemoCafeSeeder extends Seeder
      * @var list<array{name: string, description: string, category: CostCategory, unit: string, driver: string|null, pass_through: float, lag: int, spend: float, unit_price: float, supplier: string|null, storable?: bool, storage_cost_rate?: float, invoices_per_month: int, status?: MappingStatus, confidence?: float}>
      */
     private const array Lines = [
-        ['name' => 'Coffee beans', 'description' => 'Kafe kokërr 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 9000, 'unit_price' => 18.00, 'supplier' => 'Kafe Fusha', 'storable' => true, 'storage_cost_rate' => 0.01, 'invoices_per_month' => 4],
-        ['name' => 'Milk', 'description' => 'Qumësht 3.2% 1L', 'category' => CostCategory::Ingredients, 'unit' => 'l', 'driver' => 'commodity.dairy', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 4500, 'unit_price' => 1.20, 'supplier' => 'Qumështorja Prishtina', 'invoices_per_month' => 4],
-        ['name' => 'Sugar', 'description' => 'Sheqer kristal 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'commodity.sugar', 'pass_through' => 0.7, 'lag' => 1, 'spend' => 1200, 'unit_price' => 1.20, 'supplier' => 'Furnizime Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 2],
-        ['name' => 'Syrups and chocolate', 'description' => 'Shurup dhe çokollatë për pije', 'category' => CostCategory::Ingredients, 'unit' => 'bottle', 'driver' => 'cpi.food', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 2500, 'unit_price' => 8.00, 'supplier' => 'Furnizime Dardana', 'invoices_per_month' => 2],
-        ['name' => 'Pastries', 'description' => 'Kroasanë dhe ëmbëlsira', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.food', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 3500, 'unit_price' => 12.00, 'supplier' => 'Pastiçeria Qyteti', 'invoices_per_month' => 4],
+        ['name' => 'Coffee beans', 'description' => 'Kafe kokërr 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'cpi.coffee_tea_cocoa', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 9000, 'unit_price' => 18.00, 'supplier' => 'Kafe Fusha', 'storable' => true, 'storage_cost_rate' => 0.01, 'invoices_per_month' => 4],
+        ['name' => 'Milk', 'description' => 'Qumësht 3.2% 1L', 'category' => CostCategory::Ingredients, 'unit' => 'l', 'driver' => 'cpi.milk_cheese_eggs', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 4500, 'unit_price' => 1.20, 'supplier' => 'Qumështorja Prishtina', 'invoices_per_month' => 4],
+        ['name' => 'Sugar', 'description' => 'Sheqer kristal 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'cpi.sugar', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 1200, 'unit_price' => 1.20, 'supplier' => 'Furnizime Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 2],
+        ['name' => 'Syrups and chocolate', 'description' => 'Shurup dhe çokollatë për pije', 'category' => CostCategory::Ingredients, 'unit' => 'bottle', 'driver' => 'cpi.sugar', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 2500, 'unit_price' => 8.00, 'supplier' => 'Furnizime Dardana', 'invoices_per_month' => 2],
+        ['name' => 'Pastries', 'description' => 'Kroasanë dhe ëmbëlsira', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.bread_cereals', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 3500, 'unit_price' => 12.00, 'supplier' => 'Pastiçeria Qyteti', 'invoices_per_month' => 4],
         ['name' => 'Packaging', 'description' => 'Gota dhe kapakë për kafe', 'category' => CostCategory::Packaging, 'unit' => 'pack', 'driver' => 'cpi.headline', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 1700, 'unit_price' => 12.00, 'supplier' => 'Furnizime Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 1, 'status' => MappingStatus::Suggested, 'confidence' => 0.6],
-        ['name' => 'Electricity', 'description' => 'Rryma - fatura mujore e 3 lokaleve', 'category' => CostCategory::Energy, 'unit' => 'kWh', 'driver' => 'energy.electricity', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 5000, 'unit_price' => 0.11, 'supplier' => 'Energjia Demo', 'invoices_per_month' => 1],
-        ['name' => 'Delivery fuel', 'description' => 'Naftë për furnizime dhe dërgesa', 'category' => CostCategory::Transport, 'unit' => 'l', 'driver' => 'fuel.diesel', 'pass_through' => 0.9, 'lag' => 0, 'spend' => 600, 'unit_price' => 1.45, 'supplier' => 'Pika e Karburantit', 'invoices_per_month' => 2],
+        ['name' => 'Electricity', 'description' => 'Rryma - fatura mujore e 3 lokaleve', 'category' => CostCategory::Energy, 'unit' => 'kWh', 'driver' => 'cpi.electricity_gas', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 5000, 'unit_price' => 0.11, 'supplier' => 'Energjia Demo', 'invoices_per_month' => 1],
+        ['name' => 'Delivery fuel', 'description' => 'Naftë për furnizime dhe dërgesa', 'category' => CostCategory::Transport, 'unit' => 'l', 'driver' => 'cpi.transport_fuel', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 600, 'unit_price' => 1.45, 'supplier' => 'Pika e Karburantit', 'invoices_per_month' => 2],
         ['name' => 'Wages', 'description' => 'Pagat e stafit në 3 lokale', 'category' => CostCategory::Wages, 'unit' => 'month', 'driver' => 'wages.kosovo', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 19000, 'unit_price' => 19000, 'supplier' => null, 'invoices_per_month' => 1],
         ['name' => 'Rent', 'description' => 'Qiraja e 3 lokaleve', 'category' => CostCategory::Rent, 'unit' => 'month', 'driver' => null, 'pass_through' => 0.0, 'lag' => 0, 'spend' => 6000, 'unit_price' => 6000, 'supplier' => 'Pronari i lokaleve', 'invoices_per_month' => 1],
         ['name' => 'Other ingredients', 'description' => 'Çaj, ujë dhe përbërës të tjerë', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 1000, 'unit_price' => 9.00, 'supplier' => 'Furnizime Dardana', 'invoices_per_month' => 1],
@@ -74,7 +76,7 @@ class DemoCafeSeeder extends Seeder
             'industry' => 'cafe',
             'locations' => 3,
             'currency' => 'EUR',
-            'cash_balance' => 30000,
+            'cash_balance' => 20000,
             'minimum_cash_reserve' => 15000,
             'monthly_non_operating_outflows' => 7000,
             'price_elasticity' => -0.5,
@@ -118,8 +120,8 @@ class DemoCafeSeeder extends Seeder
 
         AlertRule::create([
             'company_id' => $company->id,
-            'metric' => 'stress_probability',
-            'threshold' => 0.4,
+            'metric' => 'margin_at_risk',
+            'threshold' => 500,
             'recipient_email' => 'owner@cafe-demo.test',
         ]);
     }

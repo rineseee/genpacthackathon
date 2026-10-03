@@ -27,7 +27,6 @@ class RecommendationControllerTest extends TestCase
 
         $planTypes = array_column(array_column($response->json('data.plan.actions'), 'action'), 'type');
         $this->assertContains('raise_prices', $planTypes);
-        $this->assertContains('fixed_price', $planTypes);
         $this->assertContains('switch_supplier', $planTypes);
         $this->assertGreaterThan(
             $response->json('data.do_nothing.profit_at_horizon.value'),

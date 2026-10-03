@@ -21,6 +21,14 @@ class GroundingCheckTest extends TestCase
         $this->assertSame(['3'], (new GroundingCheck)->ungroundedNumbers($text, [14.0]));
     }
 
+    public function test_ignores_numbers_inside_names_copied_from_the_data(): void
+    {
+        $text = 'The official HICP 01.1.1 Bread and cereals index moved 4.1%.';
+
+        $this->assertFalse((new GroundingCheck)->isGrounded($text, [4.1]));
+        $this->assertTrue((new GroundingCheck)->isGrounded($text, [4.1], ['HICP 01.1.1 Bread and cereals']));
+    }
+
     public function test_matches_negative_amounts_written_with_a_leading_sign(): void
     {
         $this->assertTrue((new GroundingCheck)->isGrounded('Range -€2,353 to €3,862.', [-2353.2, 3861.9]));

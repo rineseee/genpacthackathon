@@ -18,7 +18,7 @@ class ExpenseClassificationControllerTest extends TestCase
             'descriptions' => ['Vaj Luledielli 5L Bimi', 'Shërbim kontabiliteti'],
         ])
             ->assertOk()
-            ->assertJsonPath('data.0.classification.driver_code', 'commodity.sunflower_oil')
+            ->assertJsonPath('data.0.classification.driver_code', 'cpi.oils_fats')
             ->assertJsonPath('data.0.label', 'ai_suggestion')
             ->assertJsonPath('data.1.classification', null)
             ->assertJsonPath('data.1.label', 'needs_validation');

@@ -28,6 +28,14 @@ final readonly class LabelledValue implements JsonSerializable
     }
 
     /**
+     * Euros with cents, for unit prices.
+     */
+    public static function euros2(float $value, StatementLabel $label, ?float $low = null, ?float $high = null, ?Confidence $confidence = null): self
+    {
+        return new self(round($value, 2), 'EUR', $label, $low === null ? null : round($low, 2), $high === null ? null : round($high, 2), $confidence);
+    }
+
+    /**
      * Build a percentage value from a fraction (0.073 becomes 7.3).
      */
     public static function percent(float $fraction, StatementLabel $label, ?float $lowFraction = null, ?float $highFraction = null, ?Confidence $confidence = null, ?string $source = null): self

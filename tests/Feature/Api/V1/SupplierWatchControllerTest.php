@@ -10,7 +10,7 @@ class SupplierWatchControllerTest extends TestCase
 {
     use RefreshDatabase, SeedsDemoCafe;
 
-    public function test_flags_the_supplier_that_outpaced_its_market_with_drafts_in_both_languages(): void
+    public function test_flags_the_supplier_against_headline_inflation_when_its_subgroup_is_not_yet_published(): void
     {
         $company = $this->seedDemoCafe();
 
@@ -20,7 +20,9 @@ class SupplierWatchControllerTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.supplier.name', 'Qumështorja Prishtina')
             ->assertJsonPath('data.0.cost_line.name', 'Milk')
-            ->assertJsonPath('data.0.renegotiation_draft.label', 'ai_suggestion');
+            ->assertJsonPath('data.0.renegotiation_draft.label', 'ai_suggestion')
+            ->assertJsonPath('data.0.benchmark.code', 'cpi.headline')
+            ->assertJsonPath('data.0.benchmark.is_fallback', true);
 
         $flag = $response->json('data.0');
         $this->assertGreaterThan($flag['market_change']['value'] + 5, $flag['supplier_price_change']['value']);

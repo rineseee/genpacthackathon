@@ -16,7 +16,7 @@ class InvoiceImportControllerTest extends TestCase
     public function test_imports_rows_and_suggests_cost_lines_for_owner_validation(): void
     {
         $company = Company::factory()->create();
-        PriceDriver::factory()->create(['code' => 'commodity.sunflower_oil']);
+        PriceDriver::factory()->create(['code' => 'cpi.oils_fats']);
         $csv = implode("\n", [
             'date,supplier,description,quantity,unit,unit_price',
             '2026-09-03,Distributori Dardana,Vaj Luledielli 5L Bimi,100,l,"2,45"',

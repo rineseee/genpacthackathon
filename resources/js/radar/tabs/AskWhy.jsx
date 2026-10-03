@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { companyId, getJson, pct, useApi } from '../api';
 import { Card, Pill, SectionTitle, ShowAs, Tile } from '../shell';
 
 const PIPELINE = [
     ['01', 'Business data', 'Invoices read and matched to price drivers', 'llm'],
-    ['02', 'Economic data', 'CPI, PPI, energy, FX, commodities joined by date', 'pipeline'],
+    ['02', 'Economic data', 'Official ASK price series (HICP subgroups, wages) joined by month', 'pipeline'],
     ['03', 'Forecasting', 'How strongly and how fast each cost follows its market index, with ranges', 'statistics'],
     ['04', 'Scenarios', 'Driver-based model plus 5,000 simulations', 'statistics'],
     ['05', 'Risk detection', 'Risk score, anomalies, early warnings', 'statistics'],
@@ -37,7 +38,7 @@ function RiskScale({ score }) {
                     className="absolute -top-0.5 -translate-x-1/2 rounded bg-[var(--chrome)] px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap text-white"
                     style={{ left: `${score}%` }}
                 >
-                    You: {score}
+                    You: {score.toFixed(1)}%
                 </div>
             </div>
             <div className="flex h-6 overflow-hidden rounded">
@@ -56,38 +57,40 @@ function RiskScale({ score }) {
                 ))}
             </div>
             <div className="meta mt-1 flex justify-between text-[var(--ink-3)]">
-                <span>0 · safe</span>
-                <span>100 · very exposed</span>
+                <span>0% · safe</span>
+                <span>100% · very exposed</span>
             </div>
         </div>
     );
 }
 
-const ANSWER = {
-    score: 68,
-    figures: 4,
-    tiles: [
-        { tone: 'accent', value: '68 / 100', label: 'risk score: elevated' },
-        { tone: 'tint', value: '0.4 months', label: 'of costs kept in cash' },
-        { tone: 'chrome', value: '−5.3%', label: 'profit lost for every 1% rise in costs' },
-    ],
-    reasons: [
-        ['Thin profit', 'You keep about 16 cents of every euro. When costs rise even a little, a big part of your profit disappears.'],
-        ['Rising raw material and energy prices', 'Almost a third of what you spend is on things whose prices are rising fastest.'],
-        ['Small cash cushion', 'Your bank balance covers less than half a month of costs, so a bad month hurts quickly.'],
-    ],
-    closing:
-        'Think of the score like a weather warning: 68 means "be prepared", not "disaster". It is high mostly because your profit is thin and your cash cushion is small.',
-    notes: [
-        ['ASSUMPTIONS', 'Weights are expert-set for now and will be fitted on real outcomes once enough businesses use the platform.'],
-        ['DATA USED', '6 months of invoices, cost structure, current cash balance, supplier shares.'],
-        ['RELIABILITY', 'The score ranks risk well; the exact number can move ±5 points as more data arrives.'],
-    ],
-};
-
 export default function AskWhy() {
     const [picked, setPicked] = useState(0);
     const [view, setView] = useState('Simple picture');
+    const { data, error, loading } = useApi(() => getJson(`/api/v1/companies/${companyId()}/risk-explanation`));
+
+    const answer = data && {
+        score: data.stress_probability.value,
+        tiles: [
+            { tone: 'accent', value: pct(data.stress_probability.value), label: 'chance cash falls below your minimum in 6 months' },
+            { tone: 'tint', value: `${data.cash_months.value.toFixed(1)} months`, label: 'of costs kept in cash' },
+            { tone: 'chrome', value: `${data.profit_change_per_cost_point.value.toFixed(1)}%`, label: 'profit lost for every 1% rise in costs' },
+        ],
+        reasons: data.reasons.map((r) => [r.title, r.body]),
+        closing: data.closing.text,
+        notes: [
+            ['ASSUMPTIONS', data.notes.assumptions],
+            ['DATA USED', data.notes.data_used],
+            ['RELIABILITY', data.notes.reliability],
+        ],
+        detail: [
+            ['Profit margin', pct(data.margin.value), 'calculated'],
+            ['Cash ÷ monthly costs', `${data.cash_months.value.toFixed(1)} months`, 'calculated'],
+            ['Share of spend rising faster than official inflation', pct(data.fast_rising_share.value), 'calculated'],
+            ['Cost-to-profit leverage', `${data.profit_change_per_cost_point.value.toFixed(1)}% per 1%`, 'calculated'],
+            ['Chance of cash stress (simulated)', pct(data.stress_probability.value), 'prediction'],
+        ],
+    };
 
     return (
         <div className="mx-auto max-w-6xl px-5 py-7">
@@ -152,11 +155,15 @@ export default function AskWhy() {
                     <span className="meta text-[var(--ink-3)]">ANSWER</span>
                     <h2 className="mt-1 text-[19px] font-semibold">{QUESTIONS[picked]}</h2>
 
+                    {loading && <p className="mt-3 text-[13px] text-[var(--ink-2)]">Running the engine…</p>}
+                    {error && <p className="mt-3 rounded-lg bg-[#fbeaea] p-3 text-[13px] text-[#8a2a2a]">{error.message}</p>}
+                    {answer && (
+                    <>
                     <p className="mt-2.5 inline-flex items-center gap-2 rounded-md bg-[#e6f2e8] px-2.5 py-1.5 text-[12.5px] text-[#1f6340]">
                         <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
                             <path d="M2.5 8.5 L6.5 12.5 L13.5 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        Number check passed: all {ANSWER.figures} figures in this answer match the calculation engine
+                        Number check passed: all {answer.detail.length} figures in this answer come from the calculation engine
                     </p>
 
                     <div className="mt-3">
@@ -164,17 +171,17 @@ export default function AskWhy() {
                     </div>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        {ANSWER.tiles.map((t) => (
+                        {answer.tiles.map((t) => (
                             <Tile key={t.label} {...t} />
                         ))}
                     </div>
 
-                    <h3 className="mt-5 text-[13.5px] font-semibold">Where your business sits on the risk scale</h3>
-                    <RiskScale score={ANSWER.score} />
+                    <h3 className="mt-5 text-[13.5px] font-semibold">Your chance of cash stress on the risk scale</h3>
+                    <RiskScale score={answer.score} />
 
                     <h3 className="mt-5 text-[13.5px] font-semibold">The main reasons, biggest first</h3>
                     <ol className="mt-2.5 space-y-2">
-                        {ANSWER.reasons.map(([title, body], i) => (
+                        {answer.reasons.map(([title, body], i) => (
                             <li key={title} className="flex gap-3 rounded-lg border border-[var(--line)] p-3">
                                 <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-semibold text-white">
                                     {i + 1}
@@ -191,13 +198,7 @@ export default function AskWhy() {
                         <div className="mt-4 overflow-x-auto rounded-lg border border-[var(--line)]">
                             <table className="w-full border-collapse text-[12.5px]">
                                 <tbody>
-                                    {[
-                                        ['Profit margin', '16.0%', 'calculated'],
-                                        ['Cash ÷ monthly costs', '0.4 months', 'calculated'],
-                                        ['Share of spend on fast-rising inputs', '31%', 'calculated'],
-                                        ['Cost-to-profit leverage', '−5.3% per 1%', 'calculated'],
-                                        ['Weighted risk score', '68 / 100', 'assumption'],
-                                    ].map(([k, val, kind]) => (
+                                    {answer.detail.map(([k, val, kind]) => (
                                         <tr key={k} className="border-b border-[var(--grid)] last:border-0">
                                             <td className="px-3 py-2">{k}</td>
                                             <td className="px-3 py-2 text-right font-mono tabular-nums">{val}</td>
@@ -211,16 +212,19 @@ export default function AskWhy() {
                         </div>
                     )}
 
-                    <p className="mt-4 rounded-lg bg-[#faf7f2] p-3.5 text-[13px]">{ANSWER.closing}</p>
+                    <p className="mt-4 rounded-lg bg-[#faf7f2] p-3.5 text-[13px]">{answer.closing}</p>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        {ANSWER.notes.map(([kind, body]) => (
+                        {answer.notes.map(([kind, body]) => (
                             <div key={kind} className="rounded-lg border border-[var(--line)] p-3.5">
                                 <span className="meta text-[var(--ink-3)]">{kind}</span>
                                 <p className="mt-1.5 text-[12px] text-[var(--ink-2)]">{body}</p>
                             </div>
                         ))}
                     </div>
+
+                    </>
+                    )}
 
                     <p className="mt-4 border-t border-[var(--grid)] pt-3 text-[11.5px] text-[var(--ink-2)]">
                         The language model can only use numbers produced by the forecasting and simulation engines. If

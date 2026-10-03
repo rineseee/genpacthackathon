@@ -94,7 +94,7 @@ final class CompanyProfileBuilder
      * @param  array<string, PriceDriver>  $drivers
      * @return array<string, array<string, float>>
      */
-    private function driverSeries(array $drivers): array
+    public function driverSeries(array $drivers): array
     {
         $series = array_fill_keys(array_keys($drivers), []);
         $codesById = [];
@@ -175,7 +175,7 @@ final class CompanyProfileBuilder
      *
      * @param  array<string, float>  $series
      */
-    private function pendingChange(array $series, string $asOf, int $lagMonths): float
+    public function pendingChange(array $series, string $asOf, int $lagMonths): float
     {
         if ($lagMonths === 0) {
             return 0.0;
@@ -215,7 +215,7 @@ final class CompanyProfileBuilder
      * @param  array<string, array<string, float>>  $driverSeries
      * @return array<string, DriverOutlook>
      */
-    private function outlooks(array $drivers, array $driverSeries): array
+    public function outlooks(array $drivers, array $driverSeries): array
     {
         $outlooks = [];
 
@@ -235,15 +235,57 @@ final class CompanyProfileBuilder
                 continue;
             }
 
-            $changes = array_slice(array_values(MonthlySeries::logChanges($driverSeries[$code] ?? [])), -12);
+            $outlook = $this->trendOutlook($driverSeries[$code] ?? [], $driver);
 
-            if (count($changes) >= 3) {
-                $mean = array_sum($changes) / count($changes);
-                $variance = array_sum(array_map(fn (float $change): float => ($change - $mean) ** 2, $changes)) / (count($changes) - 1);
-                $outlooks[$code] = new DriverOutlook(exp($mean) - 1, max(0.001, sqrt($variance)), 'Trailing 12-month trend of '.$driver->source);
+            if ($outlook !== null) {
+                $outlooks[$code] = $outlook;
             }
         }
 
         return $outlooks;
+    }
+
+    /**
+     * Drift from the last 12 months of the driver's own history. Uncertainty comes from how much its
+     * 12-month change has varied, scaled to one month, which stays sensible for series that move in
+     * annual steps (wages, regulated tariffs) where month-to-month volatility would overstate it.
+     *
+     * @param  array<string, float>  $series
+     */
+    private function trendOutlook(array $series, PriceDriver $driver): ?DriverOutlook
+    {
+        $changes = MonthlySeries::logChanges($series);
+        $lastYear = array_slice(array_values($changes), -12);
+
+        if (count($lastYear) < 3) {
+            return null;
+        }
+
+        $drift = exp(array_sum($lastYear) / count($lastYear)) - 1;
+        $annualChanges = [];
+
+        foreach ($series as $period => $value) {
+            $yearAgo = $series[MonthlySeries::shift($period, -12)] ?? null;
+
+            if ($yearAgo !== null && $yearAgo > 0 && $value > 0) {
+                $annualChanges[] = log($value / $yearAgo);
+            }
+        }
+
+        $volatility = count($annualChanges) >= 6
+            ? $this->standardDeviation($annualChanges) / sqrt(12)
+            : $this->standardDeviation($lastYear);
+
+        return new DriverOutlook($drift, max(0.002, $volatility), 'Trailing 12-month trend of '.$driver->source);
+    }
+
+    /**
+     * @param  list<float>  $values
+     */
+    private function standardDeviation(array $values): float
+    {
+        $mean = array_sum($values) / count($values);
+
+        return sqrt(array_sum(array_map(fn (float $value): float => ($value - $mean) ** 2, $values)) / max(1, count($values) - 1));
     }
 }

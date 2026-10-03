@@ -2,26 +2,27 @@
 
 namespace Database\Seeders;
 
-use App\Models\PriceDriver;
-use App\Services\PriceDriverCatalog;
+use App\Services\Margin\Ask\AskPriceImporter;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
+/**
+ * Price drivers from the Kosovo Agency of Statistics, loaded from the committed snapshot of real
+ * ASKdata series (refresh it with `php artisan margin:import-ask --snapshot`).
+ */
 class PriceDriverSeeder extends Seeder
 {
     /**
-     * Seed source metadata without making network requests or manufacturing observations.
+     * Seed the application's database.
      */
-    public function run(): void
+    public function run(AskPriceImporter $importer): void
     {
-        foreach (PriceDriverCatalog::all() as $code => $definition) {
-            $driver = PriceDriver::query()->where('code', $code)->first();
+        $path = (string) config('margin.ask.snapshot_path');
 
-            if ($driver !== null && preg_match('/demo|illustrative/i', $driver->source) === 1) {
-                $driver->observations()->delete();
-                $driver->projections()->where('source', 'like', 'Demo%')->delete();
-            }
-
-            PriceDriver::updateOrCreate(['code' => $code], $definition);
+        if (! is_file($path)) {
+            throw new RuntimeException("ASK snapshot not found at {$path}. Run `php artisan margin:import-ask --snapshot` first.");
         }
+
+        $importer->store(json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR));
     }
 }

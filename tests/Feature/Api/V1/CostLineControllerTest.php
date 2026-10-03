@@ -23,7 +23,7 @@ class CostLineControllerTest extends TestCase
         $response->assertOk()->assertJsonCount(11, 'data');
         $milk = collect($response->json('data'))->firstWhere('name', 'Milk');
         $this->assertSame('company_history', $milk['pass_through']['source']);
-        $this->assertSame(2, $milk['pass_through']['lag_months']);
+        $this->assertSame('cpi.milk_cheese_eggs', $milk['driver']['code']);
         $this->assertLessThan($milk['price_forecast']['high'], $milk['price_forecast']['low']);
         $this->assertContains($milk['price_forecast']['confidence'], ['high', 'medium', 'low']);
 

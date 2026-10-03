@@ -3,6 +3,7 @@
 namespace App\Services\Margin;
 
 use App\Enums\StatementLabel;
+use App\Models\PriceDriver;
 use App\Models\Supplier;
 
 /**
@@ -24,6 +25,8 @@ final readonly class SupplierFlag
         public float $excessChange,
         public float $monthlyOvercharge,
         public float $monthlyQuantity,
+        public PriceDriver $benchmark,
+        public bool $benchmarkIsFallback,
         public array $renegotiationDraft,
     ) {}
 
@@ -36,10 +39,15 @@ final readonly class SupplierFlag
             'supplier' => ['id' => $this->supplier->id, 'name' => $this->supplier->name],
             'cost_line' => ['id' => $this->line->costLine->id, 'name' => $this->line->costLine->name],
             'driver' => $this->line->costLine->priceDriver?->only(['code', 'name']),
+            'benchmark' => [
+                ...$this->benchmark->only(['code', 'name', 'source']),
+                'is_fallback' => $this->benchmarkIsFallback,
+                'reason' => $this->benchmarkIsFallback ? 'The official data for this cost line is not yet published for these months; compared with headline inflation instead.' : null,
+            ],
             'period' => ['from' => $this->fromPeriod, 'to' => $this->toPeriod],
             'supplier_price_change' => LabelledValue::percent($this->supplierChange, StatementLabel::Data),
-            'market_change' => LabelledValue::percent($this->marketChange, StatementLabel::Data, source: $this->line->costLine->priceDriver?->source),
-            'expected_change' => LabelledValue::percent($this->expectedChange, $this->line->estimate?->label() ?? StatementLabel::Assumption),
+            'market_change' => LabelledValue::percent($this->marketChange, StatementLabel::Data, source: $this->benchmark->source),
+            'expected_change' => LabelledValue::percent($this->expectedChange, $this->benchmarkIsFallback ? StatementLabel::Assumption : ($this->line->estimate?->label() ?? StatementLabel::Assumption)),
             'excess_change' => LabelledValue::percent($this->excessChange, StatementLabel::Data),
             'monthly_overcharge' => LabelledValue::euros($this->monthlyOvercharge, StatementLabel::Data),
             'renegotiation_draft' => [

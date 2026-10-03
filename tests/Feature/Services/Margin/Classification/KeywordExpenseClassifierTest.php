@@ -15,10 +15,10 @@ class KeywordExpenseClassifierTest extends TestCase
     public static function invoiceLines(): array
     {
         return [
-            'albanian cooking oil' => ['Vaj Luledielli 5L Bimi', 'commodity.sunflower_oil', CostCategory::Ingredients],
-            'flour with diacritics' => ['MIELL T-500 thes 50kg', 'commodity.wheat', CostCategory::Ingredients],
-            'diesel before oil' => ['Naftë D2 për furgonët', 'fuel.diesel', CostCategory::Transport],
-            'electricity bill' => ['KESCO fatura e rrymës', 'energy.electricity', CostCategory::Energy],
+            'albanian cooking oil' => ['Vaj Luledielli 5L Bimi', 'cpi.oils_fats', CostCategory::Ingredients],
+            'flour with diacritics' => ['MIELL T-500 thes 50kg', 'cpi.bread_cereals', CostCategory::Ingredients],
+            'diesel before oil' => ['Naftë D2 për furgonët', 'cpi.transport_fuel', CostCategory::Transport],
+            'electricity bill' => ['KESCO fatura e rrymës', 'cpi.electricity_gas', CostCategory::Energy],
             'rent has no driver' => ['Qiraja e lokalit', null, CostCategory::Rent],
         ];
     }

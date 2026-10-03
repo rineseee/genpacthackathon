@@ -13,10 +13,12 @@ final class GroundingCheck
 {
     /**
      * @param  list<float|int>  $facts
+     * @param  list<string>  $names  Names copied verbatim from the data (supplier, product, statistic); numbers inside them are not claims.
      * @return list<string> The numbers in the text that no fact supports.
      */
-    public function ungroundedNumbers(string $text, array $facts): array
+    public function ungroundedNumbers(string $text, array $facts, array $names = []): array
     {
+        $text = str_replace(array_filter($names, fn (string $name): bool => $name !== ''), ' ', $text);
         preg_match_all('/(?<![\w.])-?\d[\d,]*(?:\.\d+)?/u', $text, $matches);
         $ungrounded = [];
 
@@ -34,10 +36,11 @@ final class GroundingCheck
 
     /**
      * @param  list<float|int>  $facts
+     * @param  list<string>  $names
      */
-    public function isGrounded(string $text, array $facts): bool
+    public function isGrounded(string $text, array $facts, array $names = []): bool
     {
-        return $this->ungroundedNumbers($text, $facts) === [];
+        return $this->ungroundedNumbers($text, $facts, $names) === [];
     }
 
     /**

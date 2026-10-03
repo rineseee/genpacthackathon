@@ -5,6 +5,7 @@ namespace App\Services\Margin\Simulation;
 use App\Enums\SimulationScenario;
 use App\Services\Margin\CompanyProfile;
 use App\Services\Margin\CostLineProfile;
+use App\Services\Margin\MonthlySeries;
 use App\Services\Margin\Simulation\Actions\SimulationAction;
 
 /**
@@ -53,13 +54,40 @@ final class SimulationInputBuilder
             return $profile->driverOutlooks;
         }
 
-        $replay = config('margin.scenarios.replay_2022.monthly_changes');
+        $from = (string) config('margin.scenarios.replay_2022.from');
+        $months = (int) config('margin.simulation.horizon_months');
         $drivers = [];
 
         foreach ($profile->driverOutlooks as $code => $outlook) {
-            $drivers[$code] = isset($replay[$code]) ? $outlook->withScenario($replay[$code]) : $outlook;
+            $changes = $this->historicalChanges($profile->driverSeries[$code] ?? [], $from, $months);
+            $drivers[$code] = $changes === null ? $outlook : $outlook->withScenario($changes);
         }
 
         return $drivers;
+    }
+
+    /**
+     * The driver's own month-on-month changes starting at a past month, or null if its history does not reach that far.
+     *
+     * @param  array<string, float>  $series
+     * @return list<float>|null
+     */
+    private function historicalChanges(array $series, string $from, int $months): ?array
+    {
+        $changes = [];
+
+        for ($offset = 0; $offset < $months; $offset++) {
+            $period = MonthlySeries::shift($from, $offset);
+            $current = $series[$period] ?? null;
+            $previous = $series[MonthlySeries::shift($period, -1)] ?? null;
+
+            if ($current === null || $previous === null || $previous <= 0) {
+                return null;
+            }
+
+            $changes[] = $current / $previous - 1;
+        }
+
+        return $changes;
     }
 }

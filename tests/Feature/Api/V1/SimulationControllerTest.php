@@ -18,7 +18,7 @@ class SimulationControllerTest extends TestCase
         $company = $this->seedDemoCafe();
 
         $response = $this->postJson(route('api.v1.companies.simulations.store', $company), [
-            'shocks' => ['fuel.diesel' => 20],
+            'shocks' => ['cpi.transport_fuel' => 20],
             'paths' => 500,
         ]);
 
