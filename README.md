@@ -112,6 +112,11 @@ Owner's inbox    (locally: Mailpit, http://localhost:8025)
 
 **Real email:** in n8n, open the **Send email** node and swap the credential for real SMTP, e.g. Gmail (`smtp.gmail.com`, port 465, SSL on, an App Password).
 
+## Team
+- Rinesa: backend & API
+- Olsa: frontend & design
+- Engji: price data (ASK)
+
 ## Stack
 
 Laravel 13 (accounts, data, alerts, API) · the engine runs in PHP today (`app/Services/Margin`) · SQLite locally / PostgreSQL · n8n (alert delivery) · React frontend (dashboard design by Olsa) · planned Python FastAPI service for pretrained time-series forecasts.
