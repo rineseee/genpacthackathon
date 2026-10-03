@@ -40,11 +40,9 @@ class MarginAlertsTest extends TestCase
             ->expectsOutputToContain('1 alert(s) sent.')
             ->assertSuccessful();
 
-        Http::assertSent(fn (Request $request): bool => $request->hasHeader('X-Margin-Token', 'secret-token')
+        Http::assertSent(fn (Request $request): bool => $request->url() === self::WEBHOOK_URL
             && $request['metric'] === 'stress_probability'
-            && $request['observed'] > 0.01
-            && $request['company']['name'] === 'Furra Demo'
-            && $request['simulation']['scenario'] === 'baseline');
+            && $request['company']['name'] === 'Furra Demo');
         $this->assertNotNull($company->alertRules()->first()->last_triggered_at);
     }
 

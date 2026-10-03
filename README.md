@@ -27,29 +27,21 @@ Requires PHP 8.3+ (Herd's PHP 8.4 works), Composer and Node.
 ```bash
 composer run setup                   # install, .env, key, migrate, build assets
 php artisan migrate:fresh --seed     # price drivers + the demo bakery ("Furra Demo", id 1)
+php artisan margin:import-drivers   # import public price history and source CSVs
 php artisan margin:analyse           # run the analysis and print each company's summary
 composer run dev                     # app + Vite
 php artisan test --compact           # test suite
 ```
 
-### Demo result (current seed)
+### Price driver coverage
 
-"Furra Demo", a 3-location bakery:
-
-| | Monthly profit in 6 months | Cash-stress probability |
-|---|---|---|
-| Today | €8,000 | |
-| Do nothing | ≈ €723 | 64% |
-| With the recommended plan | ≈ €6,530 | ≈ 0% |
-
-The supplier watch flags the flour supplier *Mulliri Veri* at +15% vs a 5.2% market move.
-
-**Data honesty:** the CPI series are synthetic but anchored to the Kosovo Agency of Statistics Aug 2026 year-on-year figures. Commodity, energy, fuel and wage series, and all projections, are illustrative demo data.
+`margin:import-drivers` loads Kosovo HICP, World Bank commodity prices, and the EU27 raw-milk benchmark. The EU dairy series is not Kosovo-specific. Monthly observations for Kosovo electricity tariffs, diesel pump prices, and wages are left empty because no matching monthly series was verified. No unverified six-month projections are seeded.
 
 ### Commands
 
 | Command | What it does |
 |---|---|
+| `php artisan margin:import-drivers` | Upserts source-backed observations from ASKdata and the checked-in source CSVs. |
 | `php artisan margin:analyse {company?}` | Runs the margin analysis, warms its cache (~5 s cold, ~0.2 s warm) and prints the summary |
 | `php artisan margin:check-alerts {--company=}` | Sends every crossed owner alert to the n8n email workflow. Scheduled hourly, so keep `php artisan schedule:work` running. |
 
