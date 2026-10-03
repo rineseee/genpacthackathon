@@ -5,16 +5,16 @@ namespace Tests\Feature\Api\V1;
 use App\Models\SimulationRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Tests\SeedsDemoBakery;
+use Tests\SeedsDemoCafe;
 use Tests\TestCase;
 
 class CompanyRadarControllerTest extends TestCase
 {
-    use RefreshDatabase, SeedsDemoBakery;
+    use RefreshDatabase, SeedsDemoCafe;
 
-    public function test_returns_labelled_headline_numbers_for_the_demo_bakery(): void
+    public function test_returns_labelled_headline_numbers_for_the_demo_cafe(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $response = $this->getJson(route('api.v1.companies.radar.show', $company));
 
@@ -37,7 +37,7 @@ class CompanyRadarControllerTest extends TestCase
     public function test_serves_the_same_payload_from_a_cache_that_does_not_unserialize_objects(): void
     {
         config(['cache.default' => 'file', 'cache.stores.file.path' => storage_path('framework/testing/cache')]);
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $fresh = $this->getJson(route('api.v1.companies.radar.show', $company))->assertOk()->json();
         $cached = $this->getJson(route('api.v1.companies.radar.show', $company))->assertOk()->json();
@@ -49,7 +49,7 @@ class CompanyRadarControllerTest extends TestCase
 
     public function test_stores_the_baseline_and_plan_runs_for_audit(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $this->getJson(route('api.v1.companies.radar.show', $company))->assertOk();
 

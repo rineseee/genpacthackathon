@@ -7,25 +7,25 @@ use App\Models\Company;
 use App\Models\CostLine;
 use App\Models\PriceDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\SeedsDemoBakery;
+use Tests\SeedsDemoCafe;
 use Tests\TestCase;
 
 class CostLineControllerTest extends TestCase
 {
-    use RefreshDatabase, SeedsDemoBakery;
+    use RefreshDatabase, SeedsDemoCafe;
 
     public function test_lists_cost_lines_with_learned_pass_through_and_forecast_ranges(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $response = $this->getJson(route('api.v1.companies.cost-lines.index', $company));
 
         $response->assertOk()->assertJsonCount(11, 'data');
-        $oil = collect($response->json('data'))->firstWhere('name', 'Cooking oil');
-        $this->assertSame('company_history', $oil['pass_through']['source']);
-        $this->assertSame(1, $oil['pass_through']['lag_months']);
-        $this->assertLessThan($oil['price_forecast']['high'], $oil['price_forecast']['low']);
-        $this->assertContains($oil['price_forecast']['confidence'], ['high', 'medium', 'low']);
+        $milk = collect($response->json('data'))->firstWhere('name', 'Milk');
+        $this->assertSame('company_history', $milk['pass_through']['source']);
+        $this->assertSame(2, $milk['pass_through']['lag_months']);
+        $this->assertLessThan($milk['price_forecast']['high'], $milk['price_forecast']['low']);
+        $this->assertContains($milk['price_forecast']['confidence'], ['high', 'medium', 'low']);
 
         $packaging = collect($response->json('data'))->firstWhere('name', 'Packaging');
         $this->assertSame('needs_validation', $packaging['mapping']['label']);

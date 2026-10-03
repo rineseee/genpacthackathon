@@ -3,16 +3,16 @@
 namespace Tests\Feature\Api\V1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\SeedsDemoBakery;
+use Tests\SeedsDemoCafe;
 use Tests\TestCase;
 
 class RecommendationControllerTest extends TestCase
 {
-    use RefreshDatabase, SeedsDemoBakery;
+    use RefreshDatabase, SeedsDemoCafe;
 
     public function test_every_recommended_action_has_a_positive_euro_value_and_the_plan_beats_doing_nothing(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $response = $this->getJson(route('api.v1.companies.recommendations.index', $company));
 
@@ -37,7 +37,7 @@ class RecommendationControllerTest extends TestCase
 
     public function test_price_rise_comes_with_its_break_even_volume_loss(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $actions = collect($this->getJson(route('api.v1.companies.recommendations.index', $company))->json('data.actions'));
         $pricing = $actions->firstWhere('action.type', 'raise_prices');

@@ -14,13 +14,12 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 
 /**
- * Demo company: a fictional 3-location bakery with 18 months of invoices and sales.
+ * Demo company: a fictional three-location cafe with 18 months of invoices and sales.
  *
- * Invoice prices are generated from the price drivers with a known pass-through and lag, plus
- * noise, so the engine has a real link to learn. The flour supplier quietly adds a markup over
- * the last months, which the supplier watch should catch. Requires PriceDriverSeeder.
+ * Coffee uses the broad Kosovo food CPI as a proxy; milk follows the EU raw-milk benchmark.
+ * The milk supplier's markup over that benchmark is deliberately visible to supplier watch.
  */
-class DemoBakerySeeder extends Seeder
+class DemoCafeSeeder extends Seeder
 {
     private const string AsOf = '2026-09';
 
@@ -34,25 +33,25 @@ class DemoBakerySeeder extends Seeder
      * @var list<array{name: string, description: string, category: CostCategory, unit: string, driver: string|null, pass_through: float, lag: int, spend: float, unit_price: float, supplier: string|null, storable?: bool, storage_cost_rate?: float, invoices_per_month: int, status?: MappingStatus, confidence?: float}>
      */
     private const array Lines = [
-        ['name' => 'Flour', 'description' => 'Miell T-500 thes 50kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'commodity.wheat', 'pass_through' => 0.7, 'lag' => 2, 'spend' => 9000, 'unit_price' => 0.50, 'supplier' => 'Mulliri Veri', 'invoices_per_month' => 4],
-        ['name' => 'Cooking oil', 'description' => 'Vaj Luledielli 5L', 'category' => CostCategory::Ingredients, 'unit' => 'l', 'driver' => 'commodity.sunflower_oil', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 2500, 'unit_price' => 2.50, 'supplier' => 'Distributori Dardana', 'storable' => true, 'storage_cost_rate' => 0.01, 'invoices_per_month' => 2],
-        ['name' => 'Sugar', 'description' => 'Sheqer kristal 50kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'commodity.sugar', 'pass_through' => 0.7, 'lag' => 1, 'spend' => 1500, 'unit_price' => 0.75, 'supplier' => 'Distributori Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 2],
-        ['name' => 'Dairy', 'description' => 'Gjalpë 82% dhe qumësht', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'commodity.dairy', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 4500, 'unit_price' => 6.00, 'supplier' => 'Bulmeti Lokal', 'invoices_per_month' => 4],
-        ['name' => 'Eggs', 'description' => 'Vezë L 30 copë', 'category' => CostCategory::Ingredients, 'unit' => 'tray', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 1800, 'unit_price' => 4.50, 'supplier' => 'Ferma Kodra', 'invoices_per_month' => 4],
-        ['name' => 'Packaging', 'description' => 'Kuti dhe qese letre', 'category' => CostCategory::Packaging, 'unit' => 'pack', 'driver' => 'cpi.headline', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 1700, 'unit_price' => 12.00, 'supplier' => 'Distributori Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 1, 'status' => MappingStatus::Suggested, 'confidence' => 0.6],
-        ['name' => 'Electricity', 'description' => 'Rryma - fatura mujore 3 lokale', 'category' => CostCategory::Energy, 'unit' => 'kWh', 'driver' => 'energy.electricity', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 5500, 'unit_price' => 0.11, 'supplier' => 'Energjia Demo', 'invoices_per_month' => 1],
-        ['name' => 'Fuel', 'description' => 'Naftë D2 për furgonët', 'category' => CostCategory::Transport, 'unit' => 'l', 'driver' => 'fuel.diesel', 'pass_through' => 0.9, 'lag' => 0, 'spend' => 1600, 'unit_price' => 1.45, 'supplier' => 'Pika e Karburantit', 'invoices_per_month' => 3],
-        ['name' => 'Wages', 'description' => 'Pagat e stafit', 'category' => CostCategory::Wages, 'unit' => 'month', 'driver' => 'wages.kosovo', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 19000, 'unit_price' => 19000, 'supplier' => null, 'invoices_per_month' => 1],
-        ['name' => 'Rent', 'description' => 'Qiraja e 3 lokaleve', 'category' => CostCategory::Rent, 'unit' => 'month', 'driver' => null, 'pass_through' => 0.0, 'lag' => 0, 'spend' => 6000, 'unit_price' => 6000, 'supplier' => 'Pronari i Lokaleve', 'invoices_per_month' => 1],
-        ['name' => 'Other ingredients', 'description' => 'Maja, kripë dhe të tjera', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 900, 'unit_price' => 9.00, 'supplier' => 'Distributori Dardana', 'invoices_per_month' => 1],
+        ['name' => 'Coffee beans', 'description' => 'Kafe kokërr 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 9000, 'unit_price' => 18.00, 'supplier' => 'Kafe Fusha', 'storable' => true, 'storage_cost_rate' => 0.01, 'invoices_per_month' => 4],
+        ['name' => 'Milk', 'description' => 'Qumësht 3.2% 1L', 'category' => CostCategory::Ingredients, 'unit' => 'l', 'driver' => 'commodity.dairy', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 4500, 'unit_price' => 1.20, 'supplier' => 'Qumështorja Prishtina', 'invoices_per_month' => 4],
+        ['name' => 'Sugar', 'description' => 'Sheqer kristal 1kg', 'category' => CostCategory::Ingredients, 'unit' => 'kg', 'driver' => 'commodity.sugar', 'pass_through' => 0.7, 'lag' => 1, 'spend' => 1200, 'unit_price' => 1.20, 'supplier' => 'Furnizime Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 2],
+        ['name' => 'Syrups and chocolate', 'description' => 'Shurup dhe çokollatë për pije', 'category' => CostCategory::Ingredients, 'unit' => 'bottle', 'driver' => 'cpi.food', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 2500, 'unit_price' => 8.00, 'supplier' => 'Furnizime Dardana', 'invoices_per_month' => 2],
+        ['name' => 'Pastries', 'description' => 'Kroasanë dhe ëmbëlsira', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.food', 'pass_through' => 0.8, 'lag' => 1, 'spend' => 3500, 'unit_price' => 12.00, 'supplier' => 'Pastiçeria Qyteti', 'invoices_per_month' => 4],
+        ['name' => 'Packaging', 'description' => 'Gota dhe kapakë për kafe', 'category' => CostCategory::Packaging, 'unit' => 'pack', 'driver' => 'cpi.headline', 'pass_through' => 1.0, 'lag' => 1, 'spend' => 1700, 'unit_price' => 12.00, 'supplier' => 'Furnizime Dardana', 'storable' => true, 'storage_cost_rate' => 0.005, 'invoices_per_month' => 1, 'status' => MappingStatus::Suggested, 'confidence' => 0.6],
+        ['name' => 'Electricity', 'description' => 'Rryma - fatura mujore e 3 lokaleve', 'category' => CostCategory::Energy, 'unit' => 'kWh', 'driver' => 'energy.electricity', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 5000, 'unit_price' => 0.11, 'supplier' => 'Energjia Demo', 'invoices_per_month' => 1],
+        ['name' => 'Delivery fuel', 'description' => 'Naftë për furnizime dhe dërgesa', 'category' => CostCategory::Transport, 'unit' => 'l', 'driver' => 'fuel.diesel', 'pass_through' => 0.9, 'lag' => 0, 'spend' => 600, 'unit_price' => 1.45, 'supplier' => 'Pika e Karburantit', 'invoices_per_month' => 2],
+        ['name' => 'Wages', 'description' => 'Pagat e stafit në 3 lokale', 'category' => CostCategory::Wages, 'unit' => 'month', 'driver' => 'wages.kosovo', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 19000, 'unit_price' => 19000, 'supplier' => null, 'invoices_per_month' => 1],
+        ['name' => 'Rent', 'description' => 'Qiraja e 3 lokaleve', 'category' => CostCategory::Rent, 'unit' => 'month', 'driver' => null, 'pass_through' => 0.0, 'lag' => 0, 'spend' => 6000, 'unit_price' => 6000, 'supplier' => 'Pronari i lokaleve', 'invoices_per_month' => 1],
+        ['name' => 'Other ingredients', 'description' => 'Çaj, ujë dhe përbërës të tjerë', 'category' => CostCategory::Ingredients, 'unit' => 'pack', 'driver' => 'cpi.food', 'pass_through' => 1.0, 'lag' => 0, 'spend' => 1000, 'unit_price' => 9.00, 'supplier' => 'Furnizime Dardana', 'invoices_per_month' => 1],
     ];
 
     /**
-     * Extra markup the flour supplier adds on top of the market, by month.
+     * Extra markup the milk supplier adds on top of the benchmark, by month.
      *
      * @var array<string, float>
      */
-    private const array FlourMarkup = ['2026-06' => 1.04, '2026-07' => 1.08, '2026-08' => 1.11, '2026-09' => 1.115];
+    private const array MilkMarkup = ['2026-06' => 1.04, '2026-07' => 1.08, '2026-08' => 1.11, '2026-09' => 1.115];
 
     /**
      * Own selling-price index: one 2% rise in November 2025 and 1.5% in June 2026.
@@ -68,11 +67,11 @@ class DemoBakerySeeder extends Seeder
     {
         mt_srand(11);
 
-        Company::query()->where('name', 'Furra Demo')->delete();
+        Company::query()->where('name', 'Cafe Demo')->delete();
 
         $company = Company::create([
-            'name' => 'Furra Demo',
-            'industry' => 'bakery',
+            'name' => 'Cafe Demo',
+            'industry' => 'cafe',
             'locations' => 3,
             'currency' => 'EUR',
             'cash_balance' => 30000,
@@ -105,6 +104,7 @@ class DemoBakerySeeder extends Seeder
             $costLines[$definition['name']] = $costLine;
 
             $supplierId = null;
+
             if ($definition['supplier'] !== null) {
                 $suppliers[$definition['supplier']] ??= $company->suppliers()->create(['name' => $definition['supplier']]);
                 $supplierId = $suppliers[$definition['supplier']]->id;
@@ -120,7 +120,7 @@ class DemoBakerySeeder extends Seeder
             'company_id' => $company->id,
             'metric' => 'stress_probability',
             'threshold' => 0.4,
-            'recipient_email' => 'owner@furra-demo.test',
+            'recipient_email' => 'owner@cafe-demo.test',
         ]);
     }
 
@@ -134,13 +134,13 @@ class DemoBakerySeeder extends Seeder
         $lag = $definition['lag'];
         $anchor = MonthlySeries::valueAtOrBefore($driverSeries, MonthlySeries::shift(self::AsOf, -$lag));
         $monthlyQuantity = $definition['spend'] / $definition['unit_price'];
-        $latestMarkup = $definition['name'] === 'Flour' ? self::FlourMarkup[self::AsOf] : 1.0;
+        $latestMarkup = $definition['name'] === 'Milk' ? self::MilkMarkup[self::AsOf] : 1.0;
         $rows = [];
 
         foreach ($periods as $index => $period) {
             $driverValue = $anchor === null ? null : MonthlySeries::valueAtOrBefore($driverSeries, MonthlySeries::shift($period, -$lag));
             $marketFactor = $driverValue === null ? 1.0 : 1 + $definition['pass_through'] * ($driverValue / $anchor - 1);
-            $markup = $definition['name'] === 'Flour' ? (self::FlourMarkup[$period] ?? 1.0) / $latestMarkup : 1.0;
+            $markup = $definition['name'] === 'Milk' ? (self::MilkMarkup[$period] ?? 1.0) / $latestMarkup : 1.0;
             $isLatest = $period === self::AsOf;
             $noise = $isLatest || $definition['driver'] === null ? 1.0 : 1 + $this->noise(0.004);
             $unitPrice = round($definition['unit_price'] * $marketFactor * $markup * $noise, 4);
@@ -195,20 +195,20 @@ class DemoBakerySeeder extends Seeder
     }
 
     /**
-     * A cheaper flour mill for half the volume, and a 12-month fixed electricity price.
+     * A cheaper milk supplier for half the volume, and a 12-month fixed electricity price.
      *
      * @param  array<string, CostLine>  $costLines
      */
     private function seedOffers(Company $company, array $costLines): void
     {
-        $flourPrice = self::Lines[0]['unit_price'];
+        $milkPrice = self::Lines[1]['unit_price'];
         $electricityPrice = self::Lines[6]['unit_price'];
 
         $company->supplierOffers()->create([
-            'supplier_id' => $company->suppliers()->create(['name' => 'Agro Fusha'])->id,
-            'cost_line_id' => $costLines['Flour']->id,
+            'supplier_id' => $company->suppliers()->create(['name' => 'Qumështorja e Re'])->id,
+            'cost_line_id' => $costLines['Milk']->id,
             'kind' => OfferKind::AlternativeSupplier,
-            'unit_price' => round($flourPrice * 0.91, 4),
+            'unit_price' => round($milkPrice * 0.91, 4),
             'max_share' => 0.5,
             'quoted_on' => '2026-09-20',
         ]);

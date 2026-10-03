@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * One thing the company spends on (flour, electricity, wages), linked to the public price driver it follows.
+ * One thing the company spends on (coffee, electricity, wages), linked to the public price driver it follows.
  */
 #[Fillable(['company_id', 'price_driver_id', 'name', 'category', 'unit', 'scales_with_volume', 'storable', 'storage_cost_rate', 'mapping_status', 'mapping_confidence'])]
 class CostLine extends Model

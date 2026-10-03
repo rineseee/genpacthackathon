@@ -5,13 +5,13 @@ namespace Tests;
 use App\Models\Company;
 use App\Models\PriceDriver;
 use Carbon\CarbonImmutable;
-use Database\Seeders\DemoBakerySeeder;
+use Database\Seeders\DemoCafeSeeder;
 use Database\Seeders\PriceDriverSeeder;
 
 /**
- * Seeds explicitly test-only driver histories and the demo bakery for deterministic behavior tests.
+ * Seeds explicitly test-only driver histories and the demo cafe for deterministic behavior tests.
  */
-trait SeedsDemoBakery
+trait SeedsDemoCafe
 {
     /**
      * @var array<string, array{previous: float, latest: float, wiggle: float}>
@@ -30,15 +30,15 @@ trait SeedsDemoBakery
         'wages.kosovo' => ['previous' => 0.0, 'latest' => 0.10, 'wiggle' => 0.02],
     ];
 
-    protected function seedDemoBakery(): Company
+    protected function seedDemoCafe(): Company
     {
         config(['margin.simulation.paths' => 400]);
 
         $this->seed(PriceDriverSeeder::class);
         $this->seedTestDriverObservations();
-        $this->seed(DemoBakerySeeder::class);
+        $this->seed(DemoCafeSeeder::class);
 
-        return Company::query()->where('name', 'Furra Demo')->firstOrFail();
+        return Company::query()->where('name', 'Cafe Demo')->firstOrFail();
     }
 
     private function seedTestDriverObservations(): void

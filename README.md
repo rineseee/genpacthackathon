@@ -2,7 +2,7 @@
 
 **An AI agent that tells a business owner what inflation is doing to *their* costs, margin and cash, in euros, and what each response is worth before they commit.**
 
-Built for the Genpact hackathon. The message is *protect my margin*, not *predict inflation*. We don't forecast the economy. We take public projections (statistics office, central bank, commodity markets) and learn how strongly and how fast each one moves one company's flour, electricity or wage bill. That link is called **pass-through**.
+Built for the Genpact hackathon. The message is *protect my margin*, not *predict inflation*. We don't forecast the economy. We take public projections (statistics office, central bank, commodity markets) and learn how strongly and how fast each one moves one company's coffee, electricity or wage bill. That link is called **pass-through**.
 
 > We cannot stop inflation. But every owner should know how much it costs them, where, and what to do, before they see it in the balance sheet.
 
@@ -26,8 +26,9 @@ Requires PHP 8.3+ (Herd's PHP 8.4 works), Composer and Node.
 
 ```bash
 composer run setup                   # install, .env, key, migrate, build assets
-php artisan migrate:fresh --seed     # price drivers + the demo bakery ("Furra Demo", id 1)
+php artisan migrate:fresh --seed     # users + price-driver source metadata
 php artisan margin:import-drivers   # import public price history and source CSVs
+php artisan db:seed --class=DemoCafeSeeder # seed "Cafe Demo" using imported history
 php artisan margin:analyse           # run the analysis and print each company's summary
 composer run dev                     # app + Vite
 php artisan test --compact           # test suite
@@ -35,7 +36,7 @@ php artisan test --compact           # test suite
 
 ### Price driver coverage
 
-`margin:import-drivers` loads Kosovo HICP, World Bank commodity prices, and the EU27 raw-milk benchmark. The EU dairy series is not Kosovo-specific. Monthly observations for Kosovo electricity tariffs, diesel pump prices, and wages are left empty because no matching monthly series was verified. No unverified six-month projections are seeded.
+`margin:import-drivers` loads Kosovo HICP, World Bank commodity prices, and the EU27 raw-milk benchmark. The demo cafe uses food HICP as a broad coffee-cost proxy because no coffee-specific driver is in the fixed code list; its milk benchmark is EU27 raw milk, not Kosovo retail milk. Monthly observations for Kosovo electricity tariffs, diesel pump prices, and wages are left empty because no matching monthly series was verified. No unverified six-month projections are seeded.
 
 ### Commands
 

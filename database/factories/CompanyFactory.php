@@ -19,7 +19,7 @@ class CompanyFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'industry' => 'bakery',
+            'industry' => 'cafe',
             'locations' => 1,
             'currency' => 'EUR',
             'cash_balance' => 20000,

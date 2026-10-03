@@ -6,16 +6,16 @@ use App\Models\Company;
 use App\Models\SimulationRun;
 use App\Models\SupplierOffer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\SeedsDemoBakery;
+use Tests\SeedsDemoCafe;
 use Tests\TestCase;
 
 class SimulationControllerTest extends TestCase
 {
-    use RefreshDatabase, SeedsDemoBakery;
+    use RefreshDatabase, SeedsDemoCafe;
 
     public function test_fuel_shock_lowers_profit_against_the_same_seed_baseline(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $response = $this->postJson(route('api.v1.companies.simulations.store', $company), [
             'shocks' => ['fuel.diesel' => 20],
@@ -28,7 +28,7 @@ class SimulationControllerTest extends TestCase
 
     public function test_replay_2022_is_labelled_as_an_assumption(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
 
         $this->postJson(route('api.v1.companies.simulations.store', $company), ['scenario' => 'replay_2022', 'paths' => 500])
             ->assertCreated()
@@ -38,7 +38,7 @@ class SimulationControllerTest extends TestCase
 
     public function test_tested_actions_are_reproducible_with_the_same_seed(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
         $offer = $company->supplierOffers()->where('kind', 'alternative_supplier')->firstOrFail();
         $payload = [
             'actions' => [
@@ -68,7 +68,7 @@ class SimulationControllerTest extends TestCase
 
     public function test_rejects_an_offer_from_another_company_with_422(): void
     {
-        $company = $this->seedDemoBakery();
+        $company = $this->seedDemoCafe();
         $foreignOffer = SupplierOffer::factory()->create();
 
         $this->postJson(route('api.v1.companies.simulations.store', $company), [
