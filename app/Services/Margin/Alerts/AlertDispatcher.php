@@ -34,22 +34,6 @@ class AlertDispatcher
     }
 
     /**
-     * Metrics read from the company's latest baseline simulation run.
-     *
-     * @return array<string, float>
-     */
-    public function observedMetricsFromLatestRun(Company $company): array
-    {
-        $run = $this->latestRun($company);
-
-        if ($run === null || ! isset($run->result['stress_probability'])) {
-            return [];
-        }
-
-        return [AlertMetric::StressProbability->value => (float) $run->result['stress_probability']];
-    }
-
-    /**
      * @param  array<string, float>  $observedMetrics
      */
     private function isCrossed(AlertRule $rule, array $observedMetrics): bool

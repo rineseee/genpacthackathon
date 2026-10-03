@@ -6,14 +6,16 @@ use App\Enums\AlertMetric;
 use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\SimulationRun;
+use App\Services\Margin\Alerts\AlertDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Tests\SeedsDemoBakery;
 use Tests\TestCase;
 
 class MarginAlertsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, SeedsDemoBakery;
 
     private const string WEBHOOK_URL = 'http://n8n.test/webhook/margin-alert';
 
@@ -27,26 +29,44 @@ class MarginAlertsTest extends TestCase
         ]);
     }
 
-    public function test_crossed_stress_alert_is_sent_to_n8n_and_marked_triggered(): void
+    public function test_command_sends_the_demo_bakery_stress_alert_from_the_radar(): void
     {
-        Http::fake([self::WEBHOOK_URL => Http::response(['ok' => true])]);
-        $company = Company::factory()->create(['name' => 'Furra Arbi']);
-        SimulationRun::factory()->for($company)->create(['result' => ['stress_probability' => 0.58]]);
-        $rule = AlertRule::factory()->for($company)->create([
-            'metric' => AlertMetric::StressProbability,
-            'threshold' => 0.3,
-            'recipient_email' => 'owner@example.com',
-        ]);
+        Http::fake([self::WEBHOOK_URL => Http::response(['sent' => true])]);
+        $company = $this->seedDemoBakery();
+        $company->alertRules()->update(['threshold' => 0.01]);
 
         $this->artisan('margin:check-alerts')
+            ->expectsOutputToContain('Sent stress_probability alert for Furra Demo to owner@furra-demo.test')
             ->expectsOutputToContain('1 alert(s) sent.')
             ->assertSuccessful();
 
-        Http::assertSent(fn (Request $request): bool => $request->url() === self::WEBHOOK_URL
-            && $request->hasHeader('X-Margin-Token', 'secret-token')
+        Http::assertSent(fn (Request $request): bool => $request->hasHeader('X-Margin-Token', 'secret-token')
             && $request['metric'] === 'stress_probability'
-            && $request['observed'] === 0.58
-            && $request['threshold'] === 0.3
+            && $request['observed'] > 0.01
+            && $request['company']['name'] === 'Furra Demo'
+            && $request['simulation']['scenario'] === 'baseline');
+        $this->assertNotNull($company->alertRules()->first()->last_triggered_at);
+    }
+
+    public function test_crossed_alert_is_sent_to_n8n_and_marked_triggered(): void
+    {
+        Http::fake([self::WEBHOOK_URL => Http::response(['sent' => true])]);
+        $company = Company::factory()->create(['name' => 'Furra Arbi']);
+        SimulationRun::factory()->for($company)->create();
+        $rule = AlertRule::factory()->for($company)->create([
+            'metric' => AlertMetric::MarginAtRisk,
+            'threshold' => 1000,
+            'recipient_email' => 'owner@example.com',
+        ]);
+
+        $sent = app(AlertDispatcher::class)->check($company, ['margin_at_risk' => 1450.0, 'stress_probability' => 0.58]);
+
+        $this->assertCount(1, $sent);
+        Http::assertSent(fn (Request $request): bool => $request->url() === self::WEBHOOK_URL
+            && $request['metric'] === 'margin_at_risk'
+            && $request['unit'] === 'EUR'
+            && $request['observed'] === 1450.0
+            && $request['threshold'] === 1000.0
             && $request['recipient_email'] === 'owner@example.com'
             && $request['company']['name'] === 'Furra Arbi');
         $this->assertNotNull($rule->fresh()->last_triggered_at);
@@ -56,11 +76,11 @@ class MarginAlertsTest extends TestCase
     {
         Http::fake();
         $company = Company::factory()->create();
-        SimulationRun::factory()->for($company)->create(['result' => ['stress_probability' => 0.14]]);
         AlertRule::factory()->for($company)->create(['threshold' => 0.3]);
 
-        $this->artisan('margin:check-alerts')->assertSuccessful();
+        $sent = app(AlertDispatcher::class)->check($company, ['stress_probability' => 0.14]);
 
+        $this->assertCount(0, $sent);
         Http::assertNothingSent();
     }
 
@@ -68,23 +88,9 @@ class MarginAlertsTest extends TestCase
     {
         Http::fake();
         $company = Company::factory()->create();
-        SimulationRun::factory()->for($company)->create(['result' => ['stress_probability' => 0.58]]);
         AlertRule::factory()->for($company)->create(['threshold' => 0.3, 'last_triggered_at' => now()->subDays(2)]);
 
-        $this->artisan('margin:check-alerts')->assertSuccessful();
-
-        Http::assertNothingSent();
-    }
-
-    public function test_what_if_runs_do_not_trigger_alerts(): void
-    {
-        Http::fake();
-        $company = Company::factory()->create();
-        SimulationRun::factory()->for($company)->create(['scenario' => 'baseline', 'result' => ['stress_probability' => 0.14]]);
-        SimulationRun::factory()->for($company)->create(['scenario' => 'replay_2022', 'result' => ['stress_probability' => 0.9]]);
-        AlertRule::factory()->for($company)->create(['threshold' => 0.3]);
-
-        $this->artisan('margin:check-alerts')->assertSuccessful();
+        app(AlertDispatcher::class)->check($company, ['stress_probability' => 0.58]);
 
         Http::assertNothingSent();
     }
@@ -93,13 +99,11 @@ class MarginAlertsTest extends TestCase
     {
         Http::fake([self::WEBHOOK_URL => Http::response('down', 500)]);
         $company = Company::factory()->create();
-        SimulationRun::factory()->for($company)->create(['result' => ['stress_probability' => 0.58]]);
         $rule = AlertRule::factory()->for($company)->create(['threshold' => 0.3]);
 
-        $this->artisan('margin:check-alerts')
-            ->expectsOutputToContain('0 alert(s) sent.')
-            ->assertSuccessful();
+        $sent = app(AlertDispatcher::class)->check($company, ['stress_probability' => 0.58]);
 
+        $this->assertCount(0, $sent);
         $this->assertNull($rule->fresh()->last_triggered_at);
     }
 }

@@ -1,58 +1,121 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Margin Shield
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**An AI agent that tells a business owner what inflation is doing to *their* costs, margin and cash, in euros, and what each response is worth before they commit.**
 
-## About Laravel
+Built for the Genpact hackathon. The message is *protect my margin*, not *predict inflation*. We don't forecast the economy. We take public projections (statistics office, central bank, commodity markets) and learn how strongly and how fast each one moves one company's flour, electricity or wage bill. That link is called **pass-through**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> We cannot stop inflation. But every owner should know how much it costs them, where, and what to do, before they see it in the balance sheet.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## What it does
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Step | What happens | Where in the code |
+|---|---|---|
+| 1. Classify | Messy invoice lines ("Vaj Luledielli 5L Bimi") are mapped to a price driver (cooking oil → sunflower oil commodity). The owner confirms each mapping. | `app/Services/Margin/Classification`, `config/margin.php` → `classification_rules` |
+| 2. Pass-through | For each cost line it estimates how strongly and with what lag the driver moves the price. It uses the company's own invoices when there are enough, otherwise industry defaults labelled as assumptions. | `PassThroughEstimator` |
+| 3. Company inflation | This company's own inflation vs. its selling-price growth, with the gap in €. | `CompanyInflationCalculator` |
+| 4. Simulation | 5,000-path Monte Carlo of profit and cash over 6 months, plus a "replay 2022" stress test. Seeded, so every number can be reproduced. | `Simulation/MonteCarloSimulator`, `ScenarioRunner` |
+| 5. Actions | Raise prices, switch supplier, buy ahead, fixed-price contract. Each one is simulated and given a € value. | `Simulation/Actions`, `ActionRecommender` |
+| 6. Supplier watch | Flags suppliers whose prices rise faster than the market. | `SupplierWatch` |
+| 7. Alerts | The owner is emailed **only** when a limit they set is crossed. Delivery runs through n8n (see below). | `Alerts/AlertDispatcher`, `n8n/` |
 
-## Learning Laravel
+**Hybrid AI rule:** code produces every number. Language models only handle language (classify, explain, write). `GroundingCheck` blocks any number the engine didn't produce. Every value is labelled *data / forecast / assumption / AI suggestion / needs your validation*, and forecasts are always shown as ranges.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Run it locally
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Requires PHP 8.3+ (Herd's PHP 8.4 works), Composer and Node.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer run setup                   # install, .env, key, migrate, build assets
+php artisan migrate:fresh --seed     # price drivers + the demo bakery ("Furra Demo", id 1)
+php artisan margin:analyse           # run the analysis and print each company's summary
+composer run dev                     # app + Vite
+php artisan test --compact           # test suite
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Demo result (current seed)
 
-## Contributing
+"Furra Demo", a 3-location bakery:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| | Monthly profit in 6 months | Cash-stress probability |
+|---|---|---|
+| Today | €8,000 | |
+| Do nothing | ≈ €723 | 64% |
+| With the recommended plan | ≈ €6,530 | ≈ 0% |
 
-## Code of Conduct
+The supplier watch flags the flour supplier *Mulliri Veri* at +15% vs a 5.2% market move.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Data honesty:** the CPI series are synthetic but anchored to the Kosovo Agency of Statistics Aug 2026 year-on-year figures. Commodity, energy, fuel and wage series, and all projections, are illustrative demo data.
 
-## Security Vulnerabilities
+### Commands
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Command | What it does |
+|---|---|
+| `php artisan margin:analyse {company?}` | Runs the margin analysis, warms its cache (~5 s cold, ~0.2 s warm) and prints the summary |
+| `php artisan margin:check-alerts {--company=}` | Sends every crossed owner alert to the n8n email workflow. Scheduled hourly, so keep `php artisan schedule:work` running. |
 
-## License
+### API (v1)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+All under `/api/v1` (see `routes/api.php`). There is no authentication yet.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/companies`, `/companies/{company}` | Companies |
+| GET | `/companies/{company}/radar` | Headline numbers: € lost to inflation, margin at risk, stress probability |
+| GET | `/companies/{company}/recommendations` | Ranked actions with € value |
+| POST / GET | `/companies/{company}/simulations[/{id}]` | Run a what-if simulation, or fetch a stored run |
+| GET | `/companies/{company}/supplier-watch` | Suppliers raising prices above market |
+| GET / PATCH | `/companies/{company}/cost-lines[/{line}]` | Cost lines; PATCH confirms a driver mapping |
+| POST | `/companies/{company}/expense-classifications` | Preview the driver suggested for an expense line |
+| POST | `/companies/{company}/invoice-imports` | Import supplier invoices as CSV: `date,supplier,description,quantity,unit,unit_price` |
+| CRUD | `/companies/{company}/alert-rules` | The owner's alert limits |
+| GET | `/price-drivers` | Public price drivers (CPI, commodities, energy, fuel, wages, FX) |
+
+## Email alerts with n8n
+
+```
+Laravel  margin:check-alerts (hourly)
+   │  reads the alert metrics from MarginRadar (cached; do-nothing baseline)
+   │  compares them with each owner's limits (AlertRule), max one email per limit every 7 days
+   ▼
+n8n  "Margin Shield – Owner alert email"
+   Webhook (POST /webhook/margin-alert)
+     → Token valid?  ── no ──→ 401
+     → Build email   (formats the numbers it received; computes none)
+     → Send email    (SMTP)
+     → Reply 200 {"sent": true}
+   ▼
+Owner's inbox    (locally: Mailpit, http://localhost:8025)
+```
+
+- Laravel sends: company, metric, observed value, owner's limit, label (`forecast`), and the simulation it came from (paths, scenario, seed).
+- `last_triggered_at` is set **only** when n8n confirms delivery, so a failed send is retried on the next run.
+- What-if and stress-test runs never trigger alerts. Only the do-nothing baseline counts.
+- Metrics: `stress_probability` (fraction 0–1), `margin_at_risk` (€ next quarter), `supplier_overcharge` (€ per month).
+
+### Set up
+
+1. In `.env`:
+   ```
+   MARGIN_ALERT_WEBHOOK_URL=http://localhost:5678/webhook/margin-alert
+   MARGIN_ALERT_WEBHOOK_TOKEN=<random string>   # generated by install.sh if empty
+   ```
+2. With n8n running in Docker, run:
+   ```bash
+   bash n8n/install.sh
+   ```
+   It starts Mailpit, imports the local SMTP credential and the workflow from `n8n/margin-alert-workflow.json` (the token is filled in from `.env`), publishes it and restarts n8n. Container names default to `inbox-agent-n8n-1` and `inbox-agent-n8n-worker-1`. Override them with `N8N_CONTAINER` and `N8N_WORKER_CONTAINER`.
+3. Try it:
+   ```bash
+   php artisan margin:check-alerts
+   ```
+   Then open http://localhost:8025 to see the email, and the execution under **Executions** in n8n.
+
+**Real email:** in n8n, open the **Send email** node and swap the credential for real SMTP, e.g. Gmail (`smtp.gmail.com`, port 465, SSL on, an App Password).
+
+## Stack
+
+Laravel 13 (accounts, data, alerts, API) · the engine runs in PHP today (`app/Services/Margin`) · SQLite locally / PostgreSQL · n8n (alert delivery) · React frontend (dashboard design by Olsa) · planned Python FastAPI service for pretrained time-series forecasts.
+
+## Roadmap
+
+2-day hackathon demo → ~12-week MVP with 5–10 pilot businesses → accounting and bank integrations, industry benchmarking, a monitoring agent. Kosovo first, then the Western Balkans.
