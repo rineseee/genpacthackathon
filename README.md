@@ -121,3 +121,5 @@ Laravel 13 (accounts, data, alerts, API) · the engine runs in PHP today (`app/S
 2-day hackathon demo → ~12-week MVP with 5–10 pilot businesses → accounting and bank integrations, industry benchmarking, a monitoring agent. Kosovo first, then the Western Balkans.
 
 Data source: https://askdata.rks-gov.net/
+
+
