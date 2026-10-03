@@ -43,7 +43,8 @@ final class MarginRadar
         return Cache::remember(
             'margin-radar:'.$company->id.':'.$this->fingerprint($company),
             now()->addHour(),
-            fn (): array => $this->compute($company),
+            // Plain arrays only: the cache does not unserialize application objects.
+            fn (): array => json_decode(json_encode($this->compute($company), JSON_THROW_ON_ERROR), true),
         );
     }
 
