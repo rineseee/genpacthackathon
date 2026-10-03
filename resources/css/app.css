@@ -6,44 +6,47 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 }
 
-/* Data-visualisation palette. Both modes are chosen for their own surface, not
- * flipped: each pair was run through the colourblind-separation and contrast
- * checks against the surface it actually renders on. */
+/* Inflation Radar palette. One light scheme, taken from the product design:
+ * a warm paper plane, white cards, a navy chrome and a rust accent that only
+ * ever marks "this costs you money". */
 
 :root {
-    --plane: #f9f9f7;
-    --surface: #fcfcfb;
-    --ink-1: #0b0b0b;
-    --ink-2: #52514e;
-    --ink-3: #898781;
-    --grid: #e1e0d9;
-    --axis: #c3c2b7;
-    --line: rgba(11, 11, 11, 0.1);
-    --series-1: #2a78d6;
-    --series-2: #eb6834;
-    --status-serious: #ec835a;
-    color-scheme: light;
-}
+    --plane: #f5f3ef;
+    --surface: #ffffff;
+    --chrome: #16202b;
+    --ink-1: #16202b;
+    --ink-2: #5b6470;
+    --ink-3: #8c939c;
+    --line: #e5e1d8;
+    --grid: #ece8e0;
+    --axis: #c9c4b8;
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --plane: #0d0d0d;
-        --surface: #1a1a19;
-        --ink-1: #ffffff;
-        --ink-2: #c3c2b7;
-        --ink-3: #898781;
-        --grid: #2c2c2a;
-        --axis: #383835;
-        --line: rgba(255, 255, 255, 0.1);
-        --series-1: #3987e5;
-        --series-2: #d95926;
-        color-scheme: dark;
-    }
+    /* Accents. Rust is the cost/warning hue, navy the neutral emphasis,
+     * tint the quiet one. */
+    --accent: #c2410c;
+    --accent-soft: #f0d3c4;
+    --tint: #e9eff6;
+
+    /* Risk scale, an ordinal ramp: safe to very exposed. */
+    --risk-1: #cddff2;
+    --risk-2: #f6ddc4;
+    --risk-3: #eeab8c;
+    --risk-4: #c2410c;
+
+    color-scheme: light;
 }
 
 body {
     background: var(--plane);
     color: var(--ink-1);
+}
+
+/* Small uppercase meta labels and figures the design sets in mono. */
+.meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
 }
